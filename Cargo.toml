@@ -1,0 +1,17 @@
+[package]
+name = "guard-agent-rs"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.70"
+description = "Telemetry & Monitoring Agent for Guard-Core RS and its thin adapters. Crate name reserved — initial release pending."
+authors = ["Renzo Franceschini <rennf93@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/rennf93/guard-agent-rs"
+homepage = "https://github.com/rennf93/guard-agent-rs"
+documentation = "https://docs.rs/guard-agent-rs"
+readme = "README.md"
+keywords = ["guard-core", "telemetry", "monitoring", "security", "agent"]
+categories = ["web-programming", "network-programming"]
+
+[lib]
+path = "src/lib.rs"
