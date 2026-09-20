@@ -12,6 +12,11 @@ allow = [
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
   "BSD-3-Clause",
+  # Boost Software License 1.0 (OSI approved): xxhash-rust via redis
+  "BSL-1.0",
+  # Community Data License Agreement Permissive 2.0: webpki-root-certs
+  # via reqwest's rustls-platform-verifier
+  "CDLA-Permissive-2.0",
   "ISC",
   "Unicode-3.0",
   "Zlib",
