@@ -1,13 +1,62 @@
 [package]
-name = "guard-agent-rs"
-version = "0.0.1"
-edition = "2024"
-description = "Telemetry and monitoring agent for the guard ecosystem. Part of the guard ecosystem. WIP."
-license = "MIT"
-repository = "https://github.com/rennf93/guard-agent-rs"
-readme = "README.md"
-keywords = ["security", "telemetry", "monitoring"]
-categories = ["web-programming"]
+name          = "guard-agent-rs"
+version       = "0.1.0"
+authors       = ["Renzo Franceschini <rennf93@users.noreply.github.com>"]
+categories    = ["web-programming"]
+description   = "Telemetry and monitoring agent for the Guard ecosystem (Rust)."
+documentation = "https://docs.rs/guard-agent-rs"
+edition       = "2024"
+homepage      = "https://github.com/rennf93/guard-agent-rs"
+keywords      = ["security", "telemetry", "monitoring", "api", "waf"]
+license       = "MIT OR Apache-2.0"
+repository    = "https://github.com/rennf93/guard-agent-rs"
+rust-version  = "1.92"
+readme        = "README.md"
 
-[lib]
-name = "guard_agent_rs"
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default     = []
+# Built-in Redis client for buffer persistence. The `RedisHandler` trait and an
+# in-memory implementation are always available, so callers may bring their own
+# client without enabling this feature.
+persistence = ["dep:redis"]
+
+[dependencies]
+async-trait = "0.1"
+chrono      = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+flate2      = "1"
+hmac        = "0.12"
+log         = "0.4"
+redis       = { version = "1", default-features = false, features = ["tokio-comp"], optional = true }
+reqwest     = { version = "0.13", default-features = false, features = ["rustls"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+sha2        = "0.10"
+thiserror   = "2"
+tokio       = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+uuid        = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tempfile = "3"
+wiremock = "0.6"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all                      = { level = "deny", priority = -1 }
+cast_possible_truncation = "allow"
+cast_precision_loss      = "allow"
+# Nursery noise on mutex-guard scopes that are already minimal; restructuring
+# would hurt clarity without changing behavior.
+significant_drop_tightening = "allow"
+# Suggests Duration::from_mins, which postdates the 1.92 MSRV.
+duration_suboptimal_units   = "allow"
+missing_errors_doc       = "allow"
+missing_panics_doc       = "allow"
+module_name_repetitions  = "allow"
+nursery                  = { level = "warn", priority = -1 }
+pedantic                 = { level = "warn", priority = -1 }
