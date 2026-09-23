@@ -217,3 +217,29 @@ async fn connection_failure_degrades_to_memory_only() {
 
     agent.stop().await;
 }
+
+#[tokio::test]
+#[ignore = "requires Redis on 127.0.0.1:6379; run with: cargo test --all-features -- --include-ignored"]
+async fn partial_failure_warning_mentions_redis_retention_with_redis() {
+    helpers::init_log_capture();
+    let prefix = format!("guard-agent-rs-test:{}", uuid::Uuid::new_v4());
+
+    // Dead endpoint, so the flush fails while Redis records are retained.
+    let agent = GuardAgent::new(failing_agent_config(&prefix)).unwrap();
+    agent.start().await;
+
+    agent.send_event(event(1)).await;
+    agent.flush_buffer().await;
+
+    let warnings = helpers::captured_warnings();
+    let warning = warnings
+        .iter()
+        .find(|message| message.contains("Failed to send 1 events"))
+        .expect("partial-failure warning captured");
+    assert!(
+        warning.contains("requeued in memory and retained in Redis (events) for retry"),
+        "warning must mention Redis retention when a Redis handler is attached: {warning}"
+    );
+
+    agent.stop().await;
+}

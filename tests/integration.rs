@@ -338,6 +338,36 @@ async fn treats_partial_failure_200_as_requeue() {
 }
 
 #[tokio::test]
+async fn partial_failure_warning_says_memory_only_without_redis() {
+    helpers::init_log_capture();
+    let mock = MockApi::start(Behavior::AlwaysFail {
+        status: 200,
+        body: "{\"success\": false, \"errors\": [\"Event quota exceeded. Upgrade your plan.\"]}",
+    })
+    .await;
+    let agent = GuardAgent::new(config_for(&mock)).unwrap();
+
+    agent.send_event(event(1)).await;
+    agent.flush_buffer().await;
+
+    let warnings = helpers::captured_warnings();
+    let warning = warnings
+        .iter()
+        .find(|message| message.contains("Failed to send 1 events"))
+        .expect("partial-failure warning captured");
+    assert!(
+        warning.contains("requeued in memory (events) for retry"),
+        "warning must describe memory-only retention without Redis: {warning}"
+    );
+    assert!(
+        !warnings
+            .iter()
+            .any(|message| message.contains("retained in Redis")),
+        "no warning may claim Redis retention when no Redis handler is attached"
+    );
+}
+
+#[tokio::test]
 async fn splits_on_413_until_each_half_fits() {
     let mock = MockApi::start(Behavior::TooLargeAbove { threshold: 2 }).await;
     let mut config = config_for(&mock);

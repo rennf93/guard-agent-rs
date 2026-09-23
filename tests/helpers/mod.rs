@@ -17,10 +17,63 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::OnceLock;
 
 use hmac::{Hmac, Mac as _};
+use log::{Level, Metadata, Record};
 use sha2::Sha256;
 use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
+
+/// Warnings captured by [`CapturingLogger`], shared by the test binary.
+static WARNINGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
+/// A `log` facade implementation that records warning-level messages so
+/// tests can assert on log content.
+struct CapturingLogger;
+
+impl log::Log for CapturingLogger {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        metadata.level() <= Level::Warn
+    }
+
+    fn log(&self, record: &Record<'_>) {
+        if self.enabled(record.metadata())
+            && let Some(records) = WARNINGS.get()
+        {
+            records
+                .lock()
+                .expect("warning buffer is not poisoned")
+                .push(record.args().to_string());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+/// Installs the process-wide capturing logger exactly once (the `log` facade
+/// allows a single logger per process).
+pub fn init_log_capture() {
+    static SETUP: std::sync::Once = std::sync::Once::new();
+    SETUP.call_once(|| {
+        let _ = WARNINGS.set(Mutex::new(Vec::new()));
+        let _ = log::set_boxed_logger(Box::new(CapturingLogger));
+        log::set_max_level(log::LevelFilter::Warn);
+    });
+}
+
+/// Returns every warning captured since the capturing logger was installed.
+pub fn captured_warnings() -> Vec<String> {
+    init_log_capture();
+    WARNINGS
+        .get()
+        .map(|records| {
+            records
+                .lock()
+                .expect("warning buffer is not poisoned")
+                .clone()
+        })
+        .unwrap_or_default()
+}
 
 /// Capture of one request seen by the mock server.
 #[derive(Clone, Debug)]
