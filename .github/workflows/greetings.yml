@@ -1,0 +1,45 @@
+name: Greetings
+
+on: [pull_request_target, issues]
+
+permissions: {}
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        issue_message: |
+            Thanks for opening your first issue on **guard-agent-rs**!
+
+            To help us triage quickly, please make sure your report includes:
+            - A clear reproduction (a short Rust snippet or failing test is ideal)
+            - Output of `rustc --version && cargo --version` (MSRV is 1.92)
+            - The crate version you depend on (pin a commit until the first tag) and your `Cargo.toml` entry
+            - The ingestion API base URL and which endpoints you hit (events, metrics, status)
+            - Redis persistence configuration if relevant (the `persistence` feature, a custom `RedisHandler`, or none)
+
+            A few pointers:
+            - Scan [README.md](../blob/master/README.md) and [AGENTS.md](../blob/master/AGENTS.md) for the agent contract and boundary rules.
+            - **Security vulnerability?** Do **not** open a public issue - please use GitHub's private vulnerability reporting. The agent handles API keys and HMAC signing secrets.
+
+            Thanks again - a maintainer will be with you soon.
+        pr_message: |
+            Thanks for opening your first pull request on **guard-agent-rs**!
+
+            Quick checklist before review (most of these are enforced by CI, but worth a glance):
+            - [ ] The PR body says `Closes #N` for an open issue (the `issue-link` check enforces it); chores take the `no-issue` label
+            - [ ] `cargo fmt --all -- --check` reports no files
+            - [ ] `cargo clippy --all-targets --all-features -- -D warnings` is clean
+            - [ ] `cargo test` passes, and `cargo test --all-features -- --include-ignored` passes with Redis on 127.0.0.1:6379
+            - [ ] `cargo build --all-targets` compiles the agent and the example app
+            - [ ] If you changed transport or signing behavior, it stays aligned with the ingestion contract (HMAC over the uncompressed body, verified post-decompression server-side) and with guard-agent, guard-agent-go, guard-agent-php, and guard-agent-ts
+
+            See [README.md](../blob/master/README.md) for the agent contract and [AGENTS.md](../blob/master/AGENTS.md) for the key invariants.
+
+            Welcome aboard - a maintainer will review shortly.
