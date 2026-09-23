@@ -1,0 +1,124 @@
+name: Release Gate
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [created]
+
+permissions: {}
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test at tag (${{ matrix.rust }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: ['stable', '1.92.0']
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: ${{ matrix.rust }}
+          rustflags: ""
+          cache-shared-key: release-${{ matrix.rust }}
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test (default features)
+        run: cargo test
+
+      - name: Test (all features, including Redis persistence)
+        run: cargo test --all-features -- --include-ignored
+
+  tag-consistency:
+    name: Tag matches crate version
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          rustflags: ""
+
+      - name: Verify tag equals the crate version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "guard-agent-rs") | .version')
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag does not match crate version $version"
+            exit 1
+          fi
+          echo "ok: tag v$tag matches guard-agent-rs version $version"
+
+  publish:
+    name: Publish to crates.io
+    needs: tag-consistency
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          rustflags: ""
+
+      # Retried up to 3 times (crates.io transient 5xx). NOTE on reruns:
+      # crates.io rejects re-uploading an identical version, so only
+      # re-run this job if the publish did not land.
+      - name: Publish guard-agent-rs
+        run: |
+          for attempt in 1 2 3; do
+            if cargo publish; then
+              exit 0
+            fi
+            echo "attempt $attempt failed; retrying in 30s"
+            sleep 30
+          done
+          echo "guard-agent-rs publish failed after 3 attempts"
+          exit 1

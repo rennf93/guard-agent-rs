@@ -4,7 +4,7 @@ resolver = "3"
 
 [package]
 name          = "guard-agent-rs"
-version       = "0.1.0"
+version       = "3.0.2"
 authors       = ["Renzo Franceschini <rennf93@users.noreply.github.com>"]
 categories    = ["web-programming"]
 description   = "Telemetry and monitoring agent for the Guard ecosystem (Rust)."
