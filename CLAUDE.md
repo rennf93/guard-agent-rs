@@ -25,6 +25,10 @@ The agent depends only on the ingestion contract of `guard-core-app/backend/guar
 ## Architecture
 
 ```
+examples/basic_usage/  # minimal wiring example: block verdict -> SecurityEvent -> agent (main.rs, README.md)
+.github/               # workflows (ci, greetings, issue-link, labeler, stale, summary, sync-labels, docs), labeler.yml, labels.yml
+mkdocs.yml             # mkdocs-material site definition (docs/ sources; site/ is gitignored)
+docs/                  # documentation site sources: index.md, usage.md, configuration.md
 src/
 ├── lib.rs             # Crate docs, re-exports, AGENT_VERSION
 ├── config.rs          # AgentConfig, BufferOverflowPolicy, RedisConfig, validation
@@ -51,6 +55,7 @@ Key invariants an agent must preserve when editing:
 - 400, 404, and 422 are terminal drops; 401, 403, other 4xx, 5xx, and network errors are retryable; 429 consumes an attempt and sleeps the `Retry-After` value.
 - Overflow `drop` evicts the oldest item and deletes its persisted record; requeue pressure evicts the newest tail item the same way. No orphaned records.
 - Persistence is fail-open: a store error never blocks buffering or sending.
+- Community workflows (`issue-link`, `stale`, `sync-labels`) stay byte-identical to the agent family's (guard-agent-go and siblings); `greetings`, `summary`, and `labeler`/`labels` carry repo-specific text (agent subsystems, not engine or adapter internals) and must not drift in structure.
 
 ## Quick Start
 
@@ -68,6 +73,9 @@ cargo test --all-features --test persistence_redis -- --include-ignored
 # Lint and format
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
+
+# Build the wiring example
+cargo build -p guard-agent-basic-usage
 ```
 
 ## Configuration
@@ -96,6 +104,7 @@ cargo test --all-features -- --include-ignored  # also run real-Redis tests
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
 cargo doc --no-deps --all-features         # rustdoc
+pip install mkdocs-material && mkdocs build --strict  # documentation site (docs.yml deploys on master)
 ```
 
 `rustfmt.toml` enables nightly-only options (`imports_granularity`, `group_imports`, `wrap_comments`, ...). On stable, `cargo fmt` applies the stable subset and prints warnings; this matches guard-core-rs and is expected.
