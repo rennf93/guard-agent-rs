@@ -977,9 +977,10 @@ async fn flush_events(shared: &Shared) {
                 confirm_keys(shared, NAMESPACE_EVENTS, evicted).await;
             }
             shared.fire_hook(ErrorStage::FlushEvents, &error);
+            let retention = retention_description(shared, "events").await;
             log::warn!(
-                "Failed to send {count} events; requeued in memory and retained in Redis for \
-                 retry; backing off up to {delay:.0}s between attempts: {error}"
+                "Failed to send {count} events; {retention} for retry; backing off up to \
+                 {delay:.0}s between attempts: {error}"
             );
         }
     }
@@ -1060,9 +1061,10 @@ async fn flush_metrics(shared: &Shared) {
                 confirm_keys(shared, NAMESPACE_METRICS, evicted).await;
             }
             shared.fire_hook(ErrorStage::FlushMetrics, &error);
+            let retention = retention_description(shared, "metrics").await;
             log::warn!(
-                "Failed to send {count} metrics; requeued in memory and retained in Redis for \
-                 retry; backing off up to {delay:.0}s between attempts: {error}"
+                "Failed to send {count} metrics; {retention} for retry; backing off up to \
+                 {delay:.0}s between attempts: {error}"
             );
         }
     }
@@ -1071,6 +1073,20 @@ async fn flush_metrics(shared: &Shared) {
 /// Returns `true` when a per-kind retry gate still blocks this kind.
 fn gate_closed(gate: Option<Instant>) -> bool {
     gate.is_some_and(|gate| Instant::now() < gate)
+}
+
+/// Describes where unsent items wait for retry, based on whether a Redis
+/// handler is attached to the core state. Without Redis the items live only
+/// in the in-memory buffer, so claiming Redis retention would be misleading
+/// (mirrors Python `_client_flush.FlushMixin._retention_description`).
+async fn retention_description(shared: &Shared, kind: &str) -> String {
+    let has_redis = shared.core.lock().await.redis_handler.is_some();
+    let redis_part = if has_redis {
+        " and retained in Redis"
+    } else {
+        ""
+    };
+    format!("requeued in memory{redis_part} ({kind})")
 }
 
 async fn core_set_last_flush(shared: &Shared) {
