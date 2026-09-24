@@ -2,7 +2,7 @@
 
 Telemetry and monitoring agent for the [Guard ecosystem](https://github.com/rennf93) (Rust). Companion agent to [guard-core-rs](https://github.com/rennf93/guard-core-rs) and its thin adapters, mirroring the semantics of [guard-agent](https://github.com/rennf93/guard-agent) (Python) and [guardagent](https://github.com/rennf93/guard-agent-ts) (TypeScript).
 
-Docs: https://rennf93.github.io/guard-agent-rs/
+Docs: <https://rennf93.github.io/guard-agent-rs/>
 
 The agent buffers security events, metrics, and status reports in memory, ships them to the Guard ingestion API, and applies an at-least-once reliability contract: nothing acknowledged is lost, nothing unacknowledged is forgotten.
 
